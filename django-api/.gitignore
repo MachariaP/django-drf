@@ -1,0 +1,132 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+.env
+.env.local
+.env.*.local
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Build/Deployment
+/build/
+/dist/
+/staticfiles/
+/static/
+/collected_static/
+
+# Migrations (optional - uncomment if you don't want to commit migrations)
+/books/migrations/__pycache__/
+/books/migrations/*.py
+!/books/migrations/__init__.py
+
+# Testing
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+.tox/
+.coverage
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Redis/PostgreSQL (if using local)
+redis-data/
+postgres-data/
+
+# Environment variables
+.env
+.env.prod
+.env.production
+.env.dev
+.env.development
+
+# Secrets
+*.pem
+*.key
+*.crt
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# PyCharm
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# VS Code
+.vscode/settings.json
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Node (if frontend added later)
+/node_modules/
+/npm-debug.log*
+/yarn-debug.log*
+/yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~.nib
