@@ -12,7 +12,7 @@
 
 [Features](#-feature-breakdown) •
 [Getting Started](#-getting-started) •
-[Documentation](guide.md) •
+[Documentation](#-documentation) •
 [Resources](#-resources)
 
 </div>
@@ -177,9 +177,28 @@ coverage report
 python manage.py test app_name.tests.test_models
 ```
 
-### 📖 Further Documentation
+### 📖 Documentation
 
-For a comprehensive guide on building this API from scratch, including advanced features and best practices, please refer to [guide.md](guide.md).
+This project includes comprehensive documentation to help you build production-ready APIs:
+
+- **[guide.md](guide.md)** - Complete Django REST Framework API Guide (Part 1)
+  - Project setup and configuration
+  - Building models, serializers, and viewsets
+  - Authentication and permissions
+  - Testing, documentation, and deployment
+  - Best practices and troubleshooting
+
+- **[guide001.md](guide001.md)** - Advanced Django REST Framework Guide (Part 2)
+  - E-commerce features (shopping cart, wishlist, orders)
+  - Webhooks and event-driven architecture
+  - Real-time features with Django Channels
+  - Third-party integrations (Stripe, SendGrid, AWS S3)
+  - Mobile app integration
+  - Microservices architecture
+  - GraphQL implementation
+  - Advanced security features
+  - Monitoring, logging, and performance optimization
+  - API versioning strategies
 
 ---
 
