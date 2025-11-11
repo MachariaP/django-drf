@@ -201,6 +201,582 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
 ---
 
+
+### 🧪 Testing Shopping Cart & E-commerce Features - Hands-On
+
+Let's test the shopping cart functionality to ensure everything works perfectly! This is where we make learning fun by actually using what we built.
+
+#### Understanding E-commerce Model Relationships
+
+Before testing, let's understand how these models connect:
+
+```
+User ─────┬─── ShoppingCart ───┬─── CartItem ──→ Book
+          │                     └─── CartItem ──→ Book
+          │
+          └─── WishList ──────┬─── WishListItem ──→ Book
+          │                   └─── WishListItem ──→ Book
+          │
+          └─── Order ─────────┬─── OrderItem ──→ Book
+                              └─── OrderItem ──→ Book
+```
+
+**Key Insights:**
+- **OneToOne**: Each user has ONE cart and ONE wishlist
+- **ForeignKey**: Each cart item belongs to ONE cart
+- **ManyToMany (through models)**: A cart can have many books, a book can be in many carts
+
+#### Step 1: Open Django Shell and Set Up Test Data
+
+```bash
+python manage.py shell
+```
+
+```python
+from books.models import Book, Author, Category, Publisher, ShoppingCart, CartItem, WishList, WishListItem, Order, OrderItem
+from django.contrib.auth.models import User
+from decimal import Decimal
+from datetime import date
+
+# Create a test user
+user = User.objects.create_user(
+    username='testcustomer',
+    email='customer@example.com',
+    password='testpass123'
+)
+print(f"✅ Created user: {user.username}")
+
+# Create some books for testing (if they don't exist)
+author = Author.objects.first()
+if not author:
+    author = Author.objects.create(
+        first_name="Test",
+        last_name="Author",
+        email="author@example.com"
+    )
+
+category = Category.objects.first()
+if not category:
+    category = Category.objects.create(
+        name="Test Category",
+        slug="test-category"
+    )
+
+# Create test books
+books_data = [
+    {"title": "Python Basics", "isbn": "1111111111111", "price": Decimal("29.99"), "pages": 300},
+    {"title": "Django for Beginners", "isbn": "2222222222222", "price": Decimal("34.99"), "pages": 450},
+    {"title": "REST APIs", "isbn": "3333333333333", "price": Decimal("39.99"), "pages": 380},
+]
+
+books = []
+for data in books_data:
+    book, created = Book.objects.get_or_create(
+        isbn=data["isbn"],
+        defaults={
+            'title': data["title"],
+            'author': author,
+            'price': data["price"],
+            'pages': data["pages"],
+            'publication_date': date.today(),
+            'status': 'available'
+        }
+    )
+    book.categories.add(category)
+    books.append(book)
+    print(f"{'✅ Created' if created else 'ℹ️  Found'} book: {book.title} (${book.price})")
+
+print(f"\n📚 Total books available: {Book.objects.count()}")
+```
+
+#### Step 2: Test Shopping Cart Creation
+
+```python
+print("\n🛒 Testing Shopping Cart...")
+
+# The cart is created automatically when first accessed
+cart, created = ShoppingCart.objects.get_or_create(user=user)
+print(f"{'✅ Created' if created else 'ℹ️  Found'} cart for {user.username}")
+print(f"   Cart ID: {cart.id}")
+print(f"   Created at: {cart.created_at}")
+print(f"   Total items: {cart.items.count()}")
+
+# Check the @property methods
+print(f"   Total price: ${cart.total_price}")
+print(f"   Total item count: {cart.total_items}")
+```
+
+**What We're Learning:**
+
+| Concept | Code | Explanation |
+|---------|------|-------------|
+| **get_or_create()** | `ShoppingCart.objects.get_or_create(user=user)` | Gets existing cart OR creates new one (atomic operation) |
+| **@property** | `cart.total_price` | Calculated field, not stored in database |
+| **Lazy evaluation** | `cart.items.all()` | Query not executed until needed |
+
+#### Step 3: Add Items to Cart
+
+```python
+print("\n➕ Adding items to cart...")
+
+# Add first book
+book1 = books[0]
+item1 = CartItem.objects.create(
+    cart=cart,
+    book=book1,
+    quantity=2  # Buying 2 copies
+)
+print(f"✅ Added {item1.quantity}x '{book1.title}' to cart")
+
+# Add second book
+book2 = books[1]
+item2 = CartItem.objects.create(
+    cart=cart,
+    book=book2,
+    quantity=1
+)
+print(f"✅ Added {item2.quantity}x '{book2.title}' to cart")
+
+# Try to add duplicate (should fail due to unique_together constraint)
+print("\n🧪 Testing duplicate prevention...")
+try:
+    duplicate = CartItem.objects.create(
+        cart=cart,
+        book=book1  # Same book again!
+    )
+    print("❌ Duplicate creation succeeded (shouldn't happen!)")
+except Exception as e:
+    print(f"✅ Duplicate prevented: {type(e).__name__}")
+    print(f"   This is correct! unique_together=['cart', 'book'] is working")
+
+# Check cart status
+cart.refresh_from_db()  # Refresh to get latest data
+print(f"\n📊 Cart Status:")
+print(f"   Total items: {cart.total_items}")
+print(f"   Unique books: {cart.items.count()}")
+print(f"   Total price: ${cart.total_price}")
+
+# Detailed breakdown
+print(f"\n🛍️ Cart Contents:")
+for item in cart.items.select_related('book'):  # Optimization!
+    subtotal = item.book.price * item.quantity
+    print(f"   - {item.quantity}x {item.book.title}: ${item.book.price} each = ${subtotal}")
+```
+
+**Understanding Unique Together:**
+
+```python
+# In our model:
+class CartItem(models.Model):
+    # ...
+    class Meta:
+        unique_together = ['cart', 'book']
+
+# This means:
+# ✅ User A can have Book X in their cart
+# ✅ User B can have Book X in their cart
+# ❌ User A CANNOT have Book X twice in same cart (database prevents this)
+
+# Why? Prevents duplicate entries. Instead, update quantity:
+item = CartItem.objects.get(cart=cart, book=book)
+item.quantity += 1  # Increase quantity instead of adding new entry
+item.save()
+```
+
+#### Step 4: Test Cart Updates (Realistic Scenario)
+
+```python
+print("\n🔄 Testing cart updates (like a real e-commerce site)...")
+
+# Scenario: User wants to increase quantity
+item = cart.items.first()
+old_quantity = item.quantity
+item.quantity += 1
+item.save()
+print(f"✅ Updated {item.book.title}: {old_quantity} → {item.quantity}")
+print(f"   New cart total: ${cart.total_price}")
+
+# Scenario: User removes an item
+removed_item = cart.items.last()
+removed_title = removed_item.book.title
+removed_item.delete()
+print(f"✅ Removed '{removed_title}' from cart")
+print(f"   Remaining items: {cart.items.count()}")
+print(f"   New cart total: ${cart.total_price}")
+
+# Scenario: Clear entire cart
+print("\n🗑️ Clearing cart...")
+deleted_count = cart.items.all().delete()[0]  # Returns (count, {model: count})
+print(f"✅ Removed {deleted_count} items")
+print(f"   Cart total: ${cart.total_price} (should be 0)")
+```
+
+#### Step 5: Test Wishlist Functionality
+
+```python
+print("\n⭐ Testing Wishlist...")
+
+# Create wishlist (similar to cart)
+wishlist, created = WishList.objects.get_or_create(user=user)
+print(f"{'✅ Created' if created else 'ℹ️  Found'} wishlist for {user.username}")
+
+# Add items to wishlist
+wishlist_items = []
+for book in books[:2]:  # Add first 2 books
+    item = WishListItem.objects.create(
+        wishlist=wishlist,
+        book=book,
+        notes=f"Want to read {book.title} someday!"
+    )
+    wishlist_items.append(item)
+    print(f"✅ Added '{book.title}' to wishlist")
+    print(f"   Note: {item.notes}")
+
+# View wishlist
+print(f"\n💝 Wishlist Contents ({wishlist.items.count()} items):")
+for item in wishlist.items.select_related('book'):
+    print(f"   - {item.book.title} (${item.book.price})")
+    if item.notes:
+        print(f"     📝 {item.notes}")
+    print(f"     Added: {item.added_at.strftime('%Y-%m-%d %H:%M')}")
+
+# Move from wishlist to cart
+print("\n🔄 Moving item from wishlist to cart...")
+wishlist_item = wishlist.items.first()
+book_to_move = wishlist_item.book
+
+# Add to cart
+cart_item = CartItem.objects.create(
+    cart=cart,
+    book=book_to_move,
+    quantity=1
+)
+print(f"✅ Added '{book_to_move.title}' to cart")
+
+# Remove from wishlist
+wishlist_item.delete()
+print(f"✅ Removed '{book_to_move.title}' from wishlist")
+
+print(f"\n📊 Summary:")
+print(f"   Cart: {cart.items.count()} items")
+print(f"   Wishlist: {wishlist.items.count()} items")
+```
+
+#### Step 6: Test Order Creation
+
+```python
+print("\n📦 Testing Order Creation...")
+
+# First, add items back to cart
+for book in books:
+    CartItem.objects.get_or_create(
+        cart=cart,
+        book=book,
+        defaults={'quantity': 1}
+    )
+
+cart_total = cart.total_price
+print(f"Cart ready: {cart.items.count()} items, total: ${cart_total}")
+
+# Create order from cart
+order = Order.objects.create(
+    user=user,
+    total_amount=cart_total,
+    shipping_address="123 Main St, City, Country, 12345"
+)
+print(f"\n✅ Created order #{order.id}")
+print(f"   Status: {order.get_status_display()}")
+print(f"   Total: ${order.total_amount}")
+
+# Transfer cart items to order items
+for cart_item in cart.items.all():
+    order_item = OrderItem.objects.create(
+        order=order,
+        book=cart_item.book,
+        quantity=cart_item.quantity,
+        price=cart_item.book.price  # Lock in price at time of order!
+    )
+    print(f"   Added to order: {order_item.quantity}x {order_item.book.title} @ ${order_item.price}")
+
+# Clear cart after order
+cart.items.all().delete()
+print(f"\n✅ Cart cleared after order")
+print(f"   Cart items: {cart.items.count()}")
+print(f"   Order items: {order.items.count()}")
+```
+
+**Understanding Price Locking:**
+
+```python
+# Why do we copy the price to OrderItem?
+
+# Cart Item:
+cart_item.book.price  # ← This can change!
+
+# Order Item:
+order_item.price  # ← This is LOCKED when order is created
+
+# Example:
+# 1. Customer adds book to cart: $29.99
+# 2. Customer creates order: Price locked at $29.99
+# 3. Admin changes book price: $19.99
+# 4. Customer's order still shows: $29.99 (correct!)
+# 5. New customers see: $19.99 (current price)
+
+# This protects both customer and business!
+```
+
+#### Step 7: Test Order Status Workflow
+
+```python
+print("\n🔄 Testing Order Status Workflow...")
+
+# Define status progression
+status_flow = ['pending', 'processing', 'shipped', 'delivered']
+
+for status in status_flow:
+    order.status = status
+    order.save()
+    print(f"✅ Order #{order.id} status: {order.get_status_display()}")
+    print(f"   Updated at: {order.updated_at.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+# Try to access order items after delivery
+print(f"\n📦 Final Order Summary:")
+print(f"   Order ID: {order.id}")
+print(f"   Customer: {order.user.username}")
+print(f"   Status: {order.get_status_display()}")
+print(f"   Items: {order.items.count()}")
+print(f"   Total: ${order.total_amount}")
+print(f"   Shipping: {order.shipping_address}")
+
+# Calculate order item subtotals
+print(f"\n🧾 Itemized Receipt:")
+for item in order.items.select_related('book'):
+    subtotal = item.price * item.quantity
+    print(f"   {item.quantity}x {item.book.title}")
+    print(f"      ${item.price} x {item.quantity} = ${subtotal}")
+
+# Verify total
+calculated_total = sum(item.price * item.quantity for item in order.items.all())
+print(f"\n   Subtotal: ${calculated_total}")
+print(f"   Order Total: ${order.total_amount}")
+print(f"   ✅ Totals match!" if calculated_total == order.total_amount else "❌ Totals don't match!")
+```
+
+#### Step 8: Test Data Integrity and Edge Cases
+
+```python
+print("\n🧪 Testing Edge Cases and Data Integrity...")
+
+# Test 1: Can't delete a book that's in an order
+test_book = order.items.first().book
+print(f"\n1️⃣ Testing cascade protection...")
+print(f"   Trying to delete '{test_book.title}' which is in order #{order.id}...")
+
+try:
+    test_book.delete()
+    print("   ❌ Book deleted (shouldn't happen!)")
+except Exception as e:
+    print(f"   ✅ Deletion prevented: {type(e).__name__}")
+    print(f"   on_delete=models.PROTECT is working!")
+
+# Test 2: Deleting cart clears items
+print(f"\n2️⃣ Testing cascade delete...")
+test_user = User.objects.create_user(username='testuser2', password='pass')
+test_cart = ShoppingCart.objects.create(user=test_user)
+test_item = CartItem.objects.create(cart=test_cart, book=books[0], quantity=1)
+print(f"   Created test cart with {test_cart.items.count()} item")
+
+item_count_before = CartItem.objects.count()
+test_cart.delete()
+item_count_after = CartItem.objects.count()
+print(f"   Cart deleted")
+print(f"   CartItems before: {item_count_before}, after: {item_count_after}")
+print(f"   ✅ Cascade delete working! (on_delete=models.CASCADE)")
+
+# Test 3: User can have multiple orders
+print(f"\n3️⃣ Testing multiple orders per user...")
+orders_count = Order.objects.filter(user=user).count()
+print(f"   User '{user.username}' has {orders_count} order(s)")
+
+# Create another order
+new_order = Order.objects.create(
+    user=user,
+    total_amount=Decimal("99.99"),
+    shipping_address="456 Oak Ave, Town, Country"
+)
+print(f"   ✅ Created order #{new_order.id}")
+print(f"   User now has {Order.objects.filter(user=user).count()} orders")
+
+# Test 4: Query user's order history
+print(f"\n4️⃣ Querying order history...")
+user_orders = Order.objects.filter(user=user).order_by('-created_at')
+print(f"   📜 {user.username}'s orders (newest first):")
+for order in user_orders:
+    print(f"      Order #{order.id}: {order.status} - ${order.total_amount}")
+    print(f"        Created: {order.created_at.strftime('%Y-%m-%d %H:%M')}")
+```
+
+#### 🎯 E-commerce Practice Challenges
+
+**Challenge 1: Complete Shopping Flow**
+```python
+# Simulate a complete customer journey
+print("\n🎯 Challenge 1: Complete Shopping Flow")
+
+# Step 1: Browse and add to cart
+new_user = User.objects.create_user(username='shopper', password='pass')
+new_cart, _ = ShoppingCart.objects.get_or_create(user=new_user)
+
+# Add 3 different books
+for book in Book.objects.all()[:3]:
+    CartItem.objects.create(cart=new_cart, book=book, quantity=1)
+
+print(f"✅ Step 1: Added {new_cart.items.count()} books to cart")
+
+# Step 2: Update quantities
+for item in new_cart.items.all():
+    item.quantity = 2
+    item.save()
+print(f"✅ Step 2: Updated quantities (total items: {new_cart.total_items})")
+
+# Step 3: Create order
+new_order = Order.objects.create(
+    user=new_user,
+    total_amount=new_cart.total_price,
+    shipping_address="Test Address"
+)
+for cart_item in new_cart.items.all():
+    OrderItem.objects.create(
+        order=new_order,
+        book=cart_item.book,
+        quantity=cart_item.quantity,
+        price=cart_item.book.price
+    )
+print(f"✅ Step 3: Created order #{new_order.id} (${new_order.total_amount})")
+
+# Step 4: Clear cart
+new_cart.items.all().delete()
+print(f"✅ Step 4: Cleared cart")
+
+# Step 5: Verify
+print(f"📊 Final State:")
+print(f"   Cart items: {new_cart.items.count()}")
+print(f"   Order items: {new_order.items.count()}")
+print(f"   Order total: ${new_order.total_amount}")
+```
+
+**Challenge 2: Calculate Statistics**
+```python
+# Calculate business metrics
+print("\n🎯 Challenge 2: Business Metrics")
+
+from django.db.models import Sum, Count, Avg
+
+# Total revenue
+total_revenue = Order.objects.aggregate(
+    total=Sum('total_amount')
+)['total']
+print(f"💰 Total Revenue: ${total_revenue}")
+
+# Orders by status
+status_breakdown = Order.objects.values('status').annotate(
+    count=Count('id')
+).order_by('-count')
+print(f"\n📊 Orders by Status:")
+for stat in status_breakdown:
+    print(f"   {stat['status']}: {stat['count']} orders")
+
+# Average order value
+avg_order = Order.objects.aggregate(
+    avg=Avg('total_amount')
+)['avg']
+print(f"\n📈 Average Order Value: ${avg_order:.2f}")
+
+# Most purchased books
+top_books = OrderItem.objects.values(
+    'book__title'
+).annotate(
+    total_sold=Sum('quantity')
+).order_by('-total_sold')[:5]
+print(f"\n📚 Top 5 Best Sellers:")
+for i, book in enumerate(top_books, 1):
+    print(f"   {i}. {book['book__title']}: {book['total_sold']} sold")
+```
+
+**Challenge 3: Abandoned Cart Analysis**
+```python
+# Find carts that haven't been converted to orders
+print("\n🎯 Challenge 3: Abandoned Cart Analysis")
+
+from django.utils import timezone
+from datetime import timedelta
+
+# Get carts with items but no recent orders
+threshold = timezone.now() - timedelta(days=7)
+
+abandoned_carts = ShoppingCart.objects.filter(
+    items__isnull=False  # Has items
+).exclude(
+    user__orders__created_at__gte=threshold  # But no recent orders
+).distinct().annotate(
+    item_count=Count('items'),
+    cart_value=Sum('items__book__price')
+)
+
+print(f"🛒 Abandoned Carts (older than 7 days):")
+for cart in abandoned_carts:
+    print(f"   User: {cart.user.username}")
+    print(f"   Items: {cart.item_count}")
+    print(f"   Value: ${cart.cart_value}")
+    print(f"   Last updated: {cart.updated_at.strftime('%Y-%m-%d')}")
+```
+
+#### 🎓 What You've Learned
+
+✅ **OneToOne Relationships**: Each user has one cart, one wishlist  
+✅ **unique_together**: Prevents duplicate cart items  
+✅ **@property methods**: Calculated fields (total_price, total_items)  
+✅ **on_delete Behavior**: CASCADE vs PROTECT  
+✅ **Price Locking**: Why OrderItem stores price separately  
+✅ **Order Workflow**: Status progression through lifecycle  
+✅ **Data Integrity**: Testing edge cases and constraints  
+✅ **Business Metrics**: Aggregations for insights  
+✅ **User Journey**: Complete shopping flow simulation  
+
+#### 💡 Pro Tips
+
+1. **Always use get_or_create() for carts**: Prevents duplicate cart creation
+   ```python
+   cart, created = ShoppingCart.objects.get_or_create(user=request.user)
+   ```
+
+2. **Lock prices in orders**: Never reference book.price in order calculations
+   ```python
+   # ✅ Good: Price locked at order time
+   OrderItem.objects.create(..., price=book.price)
+   
+   # ❌ Bad: Price can change
+   order_item.book.price  # Current price, not order price!
+   ```
+
+3. **Use select_related for performance**: Avoid N+1 queries
+   ```python
+   # ✅ Good: 2 queries total
+   cart.items.select_related('book')
+   
+   # ❌ Bad: N+1 queries
+   cart.items.all()  # Then accessing item.book each time
+   ```
+
+4. **Test data integrity**: Verify cascade behaviors work correctly
+
+5. **Clear cart after order**: Prevents confusion and duplicate orders
+
+**🎮 Make It Fun:** Build a complete e-commerce checkout flow! Add discount codes, tax calculation, shipping options. The more complex the scenario, the more you learn about Django's power!
+
+---
+
 ## 3. Implementing Webhooks
 
 Webhooks enable your API to notify external systems when events occur.
