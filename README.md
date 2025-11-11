@@ -232,8 +232,6 @@ The system leverages Django's powerful ORM and DRF's sophisticated serialization
 
 ## 🗄️ Database Design Overview
 
-## 🗄️ Database Design Overview
-
 ### 📊 Entity Relationship Diagram
 
 ```mermaid
