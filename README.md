@@ -117,8 +117,6 @@ The system leverages Django's powerful ORM and DRF's sophisticated serialization
 
 ### 🎯 Project Goals
 
-### 🎯 Project Goals
-
 * 🏗️ **Build a Scalable RESTful API Architecture** - Implement a well-structured, maintainable API using Django REST Framework that can handle increasing traffic and data volume without performance degradation
 * 📋 **Demonstrate Best Practices in API Design** - Showcase industry-standard patterns for URL routing, HTTP method usage, status codes, error handling, and response formatting
 * 🗃️ **Implement Comprehensive Data Modeling** - Create normalized database schema with proper relationships (one-to-many, many-to-many) that ensures data integrity and efficient querying
@@ -127,8 +125,6 @@ The system leverages Django's powerful ORM and DRF's sophisticated serialization
 * 📖 **Facilitate API Discovery and Testing** - Offer automated OpenAPI/Swagger documentation for easy integration and a browsable API interface for interactive exploration
 * 🔍 **Support Advanced Filtering and Search** - Implement powerful query capabilities including field filtering, full-text search, and flexible ordering to meet diverse client needs
 * 🚀 **Establish Production-Ready Foundation** - Include configuration for deployment, static/media file handling, CORS support, and environment-based settings management
-
-### 🔧 Key Tech Stack
 
 ### 🔧 Key Tech Stack
 
@@ -145,8 +141,6 @@ The system leverages Django's powerful ORM and DRF's sophisticated serialization
 </div>
 
 ---
-
-## 👥 Team Roles and Responsibilities
 
 ## 👥 Team Roles and Responsibilities
 
@@ -168,8 +162,6 @@ The system leverages Django's powerful ORM and DRF's sophisticated serialization
 </div>
 
 ---
-
-## 🛠️ Technology Stack Overview
 
 ## 🛠️ Technology Stack Overview
 
@@ -311,8 +303,6 @@ erDiagram
 
 ### 📋 Key Entities
 
-### 📋 Key Entities
-
 * 👤 **Author** - Stores author information including first name, last name, birth date, biography, email (unique), website, and audit timestamps (created_at, updated_at). Includes a computed full_name property for convenient access.
 
 * 📚 **Category** - Represents book categorization (e.g., Fiction, Science, Technology) with name, description, URL-friendly slug for routing, and creation timestamp. Enables filtering and organization of books by topic or genre.
@@ -324,8 +314,6 @@ erDiagram
 * ⭐ **Review** - User-generated book reviews containing a rating (1-5 stars validated), review title, detailed comment text, and timestamps. Enforces unique_together constraint ensuring each user can only review a book once, preventing duplicate reviews.
 
 * 👥 **User** - Built-in Django authentication model managing user accounts, passwords, permissions, and profile information. Referenced by reviews to track authorship and enable personalization features.
-
-### 🔗 Relationships
 
 ### 🔗 Relationships
 
@@ -346,8 +334,6 @@ erDiagram
 </div>
 
 ---
-
-## ✨ Feature Breakdown
 
 ## ✨ Feature Breakdown
 
@@ -399,8 +385,6 @@ erDiagram
 
 ## 🔒 API Security Overview
 
-## 🔒 API Security Overview
-
 ### 🛡️ Security Architecture
 
 ```mermaid
@@ -432,8 +416,6 @@ graph TB
     style Throttle fill:#FFD700
     style Valid fill:#87CEEB
 ```
-
-### 🔐 Authentication Mechanisms
 
 ### 🔐 Authentication Mechanisms
 
@@ -485,8 +467,6 @@ When limits are exceeded, the API returns a 429 Too Many Requests status with a 
 
 ## 🔄 CI/CD Pipeline Overview
 
-## 🔄 CI/CD Pipeline Overview
-
 ### 🔁 Pipeline Flow
 
 ```mermaid
@@ -509,8 +489,6 @@ graph LR
     style K fill:#90EE90
     style L fill:#FF6347
 ```
-
-### 📋 Pipeline Overview
 
 ### 📋 Pipeline Overview
 
@@ -547,8 +525,6 @@ The pipeline generates comprehensive deployment logs, tracks metrics like deploy
 </div>
 
 ---
-
-## 📚 Resources
 
 ## 📚 Resources
 
@@ -605,8 +581,6 @@ The pipeline generates comprehensive deployment logs, tracks metrics like deploy
 
 ## 📄 License
 
-## 📄 License
-
 This project is licensed under the **MIT License**.
 
 ```
@@ -642,8 +616,6 @@ SOFTWARE.
 </div>
 
 ---
-
-## 👨‍💻 Created By
 
 ## 👨‍💻 Created By
 
