@@ -68,17 +68,40 @@ pip install -r requirements.txt
 
 4️⃣ **Configure environment variables**
 ```bash
-# Create a .env file in the project root
-cp .env.example .env  # Or create manually
+# Navigate to the django-api directory
+cd django-api
+
+# Copy the example .env file
+cp .env.example .env
 ```
 
-Add the following to your `.env` file:
+Edit the `.env` file with your configuration. Here are the available settings:
+
 ```env
+# Django Configuration (Required)
 SECRET_KEY=your-secret-key-here
-DEBUG=True
-DATABASE_URL=sqlite:///db.sqlite3
-ALLOWED_HOSTS=localhost,127.0.0.1
+DEBUG=True  # Set to False in production
+
+# Database Configuration (Optional - defaults to SQLite)
+# PostgreSQL example:
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+# MySQL example:
+# DATABASE_URL=mysql://user:password@localhost:3306/dbname
+# Leave empty or comment out to use SQLite
+
+# Cache Configuration (Optional - defaults to local memory cache)
+# Redis example:
+REDIS_URL=redis://localhost:6379/0
+# Leave empty or comment out to use local memory cache
+
+# AWS Configuration (Optional - for S3 storage, SES email, etc.)
+AWS_ACCESS_KEY_ID=your-aws-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret
+AWS_STORAGE_BUCKET_NAME=your-bucket-name
+AWS_S3_REGION_NAME=us-east-1
 ```
+
+**Note:** For quick local development, you can skip creating the `.env` file. The application will use sensible defaults (SQLite database, local memory cache, debug mode enabled).
 
 5️⃣ **Run database migrations**
 ```bash
