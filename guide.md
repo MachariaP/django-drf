@@ -1594,8 +1594,8 @@ if serializer.is_valid():
 Let's see how nested serializers handle relationships:
 
 ```python
-from books.models import Book
-from books.serializers import BookDetailSerializer
+from api.models import Book
+from api.serializers import BookDetailSerializer
 
 print("\n📚 Testing Nested Serializers...")
 
@@ -1847,7 +1847,7 @@ print(json_output[:500] + "...")
 Compare the difference:
 
 ```python
-from books.serializers import BookListSerializer, BookDetailSerializer
+from api.serializers import BookListSerializer, BookDetailSerializer
 
 print("\n⚡ List vs Detail Serializers...")
 
@@ -1898,8 +1898,8 @@ Performance impact:
 
 **Challenge 1: Create and serialize a review**
 ```python
-from books.models import Review, User
-from books.serializers import ReviewSerializer
+from api.models import Review, User
+from api.serializers import ReviewSerializer
 
 user = User.objects.first()
 book = Book.objects.first()
@@ -1998,7 +1998,7 @@ By completing this section, you now understand:
 2. **Use the shell for quick validation tests**:
    ```python
    # Quick check: Is this data valid?
-   from books.serializers import AuthorSerializer
+   from api.serializers import AuthorSerializer
    AuthorSerializer(data={'first_name': 'Test'}).is_valid()
    ```
 
