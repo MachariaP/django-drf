@@ -3,6 +3,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
+from api.pagination import StandardResultsSetPagination
 from .models import Author, Category, Publisher, Book, Review
 from .serializers import (
     AuthorSerializer, CategorySerializer, PublisherSerializer,
@@ -114,6 +119,7 @@ class BookViewSet(viewsets.ModelViewSet):
     """
     queryset = Book.objects.select_related('author', 'publisher').prefetch_related('categories', 'reviews')
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'author', 'categories', 'publisher']
     search_fields = ['title', 'subtitle', 'isbn', 'description']
@@ -164,6 +170,13 @@ class BookViewSet(viewsets.ModelViewSet):
         ).order_by('-review_count')[:10]
         serializer = self.get_serializer(books, many=True)
         return Response(serializer.data)
+
+    @method_decorator(cache_page(60 * 15), name='dispatch')
+    def list(self, request, *args, **kwargs):
+        """
+        Override list method to add caching for 15 minutes.
+        """
+        return super().list(request, *args, **kwargs)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
