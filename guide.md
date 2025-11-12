@@ -228,8 +228,8 @@ python manage.py runserver
 ### Step 1: Create an App
 
 ```bash
-# Create a new app called 'api' or 'books' (example)
-python manage.py startapp books
+# Create a new app called 'api' (for this tutorial we use 'api')
+python manage.py startapp api
 ```
 
 ### Step 2: Register the App
@@ -239,7 +239,7 @@ Add to `config/settings.py`:
 ```python
 INSTALLED_APPS = [
     # ... other apps
-    'books',  # Add your app
+    'api',  # Add your app
 ]
 ```
 
@@ -248,7 +248,7 @@ INSTALLED_APPS = [
 After creating an app, you'll have:
 
 ```
-books/
+api/
 ├── __init__.py
 ├── admin.py          # Admin interface configuration
 ├── apps.py           # App configuration
@@ -282,7 +282,7 @@ The schema defines several interconnected models with important database relatio
 
 ### Step 1: Define Your Models
 
-Edit `books/models.py`:
+Edit `api/models.py`:
 
 ```python
 from django.db import models
@@ -434,7 +434,7 @@ class Review(models.Model):
 
 ### Step 2: Register Models in Admin
 
-Edit `books/admin.py`:
+Edit `api/admin.py`:
 
 ```python
 from django.contrib import admin
@@ -524,7 +524,7 @@ Let's create an author step-by-step and understand what's happening:
 
 ```python
 # Import the Author model
-from books.models import Author
+from api.models import Author
 from datetime import date
 
 # Create your first author (in memory only!)
@@ -652,7 +652,7 @@ print("✅ Email updated in database")
 Let's create a complete book with all its relationships:
 
 ```python
-from books.models import Category, Publisher, Book
+from api.models import Category, Publisher, Book
 from datetime import date
 
 # Step 4.1: Create categories
@@ -760,7 +760,7 @@ for b in fantasy.books.all():  # 'books' is the related_name!
 Reviews show another ForeignKey relationship plus how to calculate statistics:
 
 ```python
-from books.models import Review
+from api.models import Review
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Max, Min
 
@@ -1164,7 +1164,7 @@ exit()
 
 ### Step 1: Create Serializers File
 
-Create `books/serializers.py`:
+Create `api/serializers.py`:
 
 ```python
 from rest_framework import serializers
@@ -1373,8 +1373,8 @@ python manage.py shell
 Let's see how a Python object becomes JSON:
 
 ```python
-from books.models import Author
-from books.serializers import AuthorSerializer
+from api.models import Author
+from api.serializers import AuthorSerializer
 import json
 
 # Get an author from the database
@@ -1594,8 +1594,8 @@ if serializer.is_valid():
 Let's see how nested serializers handle relationships:
 
 ```python
-from books.models import Book
-from books.serializers import BookDetailSerializer
+from api.models import Book
+from api.serializers import BookDetailSerializer
 
 print("\n📚 Testing Nested Serializers...")
 
@@ -1847,7 +1847,7 @@ print(json_output[:500] + "...")
 Compare the difference:
 
 ```python
-from books.serializers import BookListSerializer, BookDetailSerializer
+from api.serializers import BookListSerializer, BookDetailSerializer
 
 print("\n⚡ List vs Detail Serializers...")
 
@@ -1898,8 +1898,8 @@ Performance impact:
 
 **Challenge 1: Create and serialize a review**
 ```python
-from books.models import Review, User
-from books.serializers import ReviewSerializer
+from api.models import Review, User
+from api.serializers import ReviewSerializer
 
 user = User.objects.first()
 book = Book.objects.first()
@@ -1998,7 +1998,7 @@ By completing this section, you now understand:
 2. **Use the shell for quick validation tests**:
    ```python
    # Quick check: Is this data valid?
-   from books.serializers import AuthorSerializer
+   from api.serializers import AuthorSerializer
    AuthorSerializer(data={'first_name': 'Test'}).is_valid()
    ```
 
@@ -2074,7 +2074,7 @@ queryset = Book.objects.select_related('author', 'publisher').prefetch_related('
 
 ### Step 1: Create Views
 
-Create `books/views.py`:
+Create `api/views.py`:
 
 ```python
 from rest_framework import viewsets, filters, status
@@ -2247,7 +2247,7 @@ This single line creates:
 
 ### Step 1: Create App URLs
 
-Create `books/urls.py`:
+Create `api/urls.py`:
 
 ```python
 from django.urls import path, include
@@ -2290,7 +2290,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # API endpoints
-    path('api/', include('books.urls')),
+    path('api/', include('api.urls')),
     
     # Authentication
     path('api/auth/', include('rest_framework.urls')),
@@ -2389,7 +2389,7 @@ http GET http://127.0.0.1:8000/api/books/ \
 
 ### Custom Permissions
 
-Create `books/permissions.py`:
+Create `api/permissions.py`:
 
 ```python
 from rest_framework import permissions
@@ -2533,7 +2533,7 @@ GET /api/books/?page=2
 
 ### 9.3 Custom Pagination
 
-Create `books/pagination.py`:
+Create `api/pagination.py`:
 
 ```python
 from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
@@ -2590,7 +2590,7 @@ REST_FRAMEWORK = {
 Custom throttle:
 
 ```python
-# books/throttles.py
+# api/throttles.py
 from rest_framework.throttling import UserRateThrottle
 
 
@@ -2714,7 +2714,7 @@ DRF provides the `APITestCase` class, which extends Django's `TestCase` and sets
 
 ### Step 1: Create Tests
 
-Create `books/tests.py`:
+Create `api/tests.py`:
 
 ```python
 from django.test import TestCase
@@ -2847,13 +2847,13 @@ class BookAPITestCase(APITestCase):
 python manage.py test
 
 # Run specific test file
-python manage.py test books.tests
+python manage.py test api.tests
 
 # Run specific test class
-python manage.py test books.tests.AuthorAPITestCase
+python manage.py test api.tests.AuthorAPITestCase
 
 # Run specific test method
-python manage.py test books.tests.AuthorAPITestCase.test_create_author
+python manage.py test api.tests.AuthorAPITestCase.test_create_author
 
 # Run with verbosity (shows more details)
 python manage.py test --verbosity=2
@@ -3157,7 +3157,7 @@ project/
 │   ├── urls.py
 │   └── wsgi.py
 ├── apps/                   # Django apps
-│   ├── books/
+│   ├── api/
 │   ├── users/
 │   └── common/
 ├── static/                 # Static files

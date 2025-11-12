@@ -174,15 +174,26 @@ REST_FRAMEWORK = {
     'ALLOWED_VERSIONS': ['v1', 'v2'],
 }
 
+# Cache configuration
+# For development, use simple cache backend
+# For production with Redis, uncomment the django_redis configuration and install django-redis
 CACHES = {
     'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
     }
 }
+
+# Production Redis cache (requires django-redis package)
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': 'redis://127.0.0.1:6379/1',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         }
+#     }
+# }
 
 # CORS settings (for development)
 CORS_ALLOWED_ORIGINS = [
