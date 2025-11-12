@@ -14,6 +14,9 @@ urlpatterns = [
     
     # API endpoints
     path('api/', include('api.urls')),
+
+    path('api/v1/', include(('api.urls', 'api'), namespace='v1')),
+    path('api/v2/', include(('api.v2.urls', 'api'), namespace='v2')), # Future versioning
     
     # Authentication
     path('api/auth/', include('rest_framework.urls')),
