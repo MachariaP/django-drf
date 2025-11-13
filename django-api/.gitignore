@@ -130,3 +130,8 @@ temp/
 *.bak
 *.swp
 *~.nib
+
+# API version stubs (remove when implemented)
+api/v2/
+!api/v2/__init__.py
+!api/v2/urls.py
