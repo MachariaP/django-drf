@@ -27,13 +27,8 @@ services:
 
   web:
     build: .
-    command: >
-      sh -c "
-        echo 'Waiting 10s for DB...' && sleep 10 &&
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput --clear &&
-        gunicorn --config gunicorn_config.py config.wsgi:application
-      "
+    entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
+    command: ["gunicorn", "--config", "gunicorn_config.py", "config.wsgi:application"]
     volumes:
       - ./django-api:/app
       - static_volume:/app/staticfiles

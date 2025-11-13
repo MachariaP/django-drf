@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     musl-dev \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file
@@ -29,6 +30,10 @@ COPY django-api/requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
     pip install gunicorn
+
+# Copy entrypoint script
+COPY scripts/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy project files
 COPY django-api /app/

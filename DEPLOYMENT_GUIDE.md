@@ -369,6 +369,8 @@ psql -U django_user -d django_drf_db -h localhost
 
 Docker provides a consistent environment across development and production. Let's set up Docker containers for PostgreSQL, Django, Nginx, and Redis.
 
+> **📌 Note:** Recent improvements have been made to ensure reliable container startup. See [DOCKER_FIX_GUIDE.md](DOCKER_FIX_GUIDE.md) for details on the fixes applied to resolve container exit issues.
+
 ### Step 1: Install Docker
 
 **On Linux:**
@@ -417,6 +419,10 @@ docker run hello-world
 # Navigate to project root
 cd /path/to/django-drf
 
+# Option 1: Quick automated test (recommended)
+./scripts/test_docker_setup.sh
+
+# Option 2: Manual setup
 # Build Docker images
 docker-compose build
 
