@@ -35,3 +35,9 @@ services:
         value: "*"
       - key: DJANGO_ENV
         value: "production"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: THREADS_PER_WORKER
+        value: "4"
+      - key: WORKER_CLASS
+        value: "gthread"

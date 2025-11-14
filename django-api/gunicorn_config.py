@@ -13,9 +13,12 @@ bind = "0.0.0.0:8000"  # Bind to all interfaces on port 8000
 backlog = 2048  # Maximum number of pending connections
 
 # Worker Processes
-# Calculate number of workers: (2 x CPU cores) + 1
-workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = "sync"  # Use sync workers (default)
+# Use WEB_CONCURRENCY environment variable if set, otherwise calculate based on CPU
+# For memory-constrained environments (like Render free tier with 512MB), use fewer workers
+# Default: 2 workers for free tier, or (2 x CPU cores) + 1 for unlimited resources
+workers = int(os.getenv("WEB_CONCURRENCY", multiprocessing.cpu_count() * 2 + 1))
+# Use gthread worker for better memory efficiency with threading
+worker_class = os.getenv("WORKER_CLASS", "gthread")  # gthread is more memory-efficient than sync
 worker_connections = 1000  # Maximum concurrent requests per worker
 max_requests = 1000  # Restart workers after this many requests (prevents memory leaks)
 max_requests_jitter = 50  # Randomize restart to prevent all workers restarting at once
@@ -23,7 +26,8 @@ timeout = 30  # Worker timeout in seconds
 keepalive = 2  # Seconds to wait for requests on Keep-Alive connections
 
 # Threading
-threads = 2  # Number of threads per worker (for async tasks)
+# Use more threads per worker to handle concurrency with fewer worker processes
+threads = int(os.getenv("THREADS_PER_WORKER", 4))  # Increased threads for gthread workers
 
 # Server Mechanics
 daemon = False  # Run in foreground (required for Docker)
@@ -129,6 +133,14 @@ limit_request_field_size = 8190  # Maximum size of request header field in bytes
 # 5. Use max_requests to prevent memory leaks from accumulating
 # 6. Increase timeout for slow requests (large file uploads, complex queries)
 # 7. Use --preload flag to reduce memory usage (loads app before forking)
+# 
+# Memory-Constrained Environments (e.g., Render Free Tier - 512MB):
+# - Set WEB_CONCURRENCY=2 to limit workers
+# - Use WORKER_CLASS=gthread for better memory efficiency
+# - Increase THREADS_PER_WORKER=4 to handle more concurrent requests
+# - Each worker uses ~60-100MB, so 2 workers + overhead fits in 512MB
+# - Formula: (workers * avg_memory_per_worker) + base_overhead < total_memory
+# - Example: (2 * 100MB) + 200MB overhead = ~400MB (safe for 512MB limit)
 
 # Recommended Production Settings:
 # - Use Nginx as reverse proxy in front of Gunicorn
