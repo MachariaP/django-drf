@@ -1,23 +1,21 @@
-services:
-  # === POSTGRES DATABASE ===
-  - type: postgres  # ← FIXED: was "pgsql"
-    name: django-drf-db
+# render.yaml
+databases:
+  - name: django-drf-db
     databaseName: django_drf_db
     user: drf_user
-    region: oregon
     plan: free
-    ipAllowList: []  # Allow all IPs for free tier
+    region: oregon
 
-  # === DJANGO WEB SERVICE ===
+services:
   - type: web
     name: django-drf-api
-    runtime: docker  # ← FIXED: was "env: docker"
+    runtime: docker
     plan: free
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    startCommand: ./scripts/docker-entrypoint.sh  # Runs migrate, seed, gunicorn
-    healthCheckPath: /api/  # ← FIXED: /api/ exists in your app
+    startCommand: ./scripts/docker-entrypoint.sh
+    healthCheckPath: /api/
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
@@ -31,12 +29,10 @@ services:
       - key: DJANGO_SUPERUSER_USERNAME
         value: "admin"
       - key: DJANGO_SUPERUSER_PASSWORD
-        sync: false  # Set manually in dashboard for security
+        sync: false
       - key: DJANGO_SUPERUSER_EMAIL
         value: "admin@example.com"
       - key: ALLOWED_HOSTS
         value: "*"
-      - key: CORS_ALLOWED_ORIGINS
-        value: "https://your-frontend-domain.com"  # Update if needed
       - key: DJANGO_ENV
         value: "production"
