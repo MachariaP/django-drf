@@ -99,6 +99,12 @@ fi
 echo "📦 Running database migrations..."
 python manage.py migrate --noinput
 
+# Create superuser if environment variables are set
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "👤 Creating superuser..."
+    python manage.py createsuperuser --noinput || echo "⚠️  Superuser creation skipped (may already exist)"
+fi
+
 # Collect static files
 echo "📁 Collecting static files..."
 python manage.py collectstatic --noinput --clear

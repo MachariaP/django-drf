@@ -14,7 +14,7 @@ services:
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /api/
+    healthCheckPath: /api/health/
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
