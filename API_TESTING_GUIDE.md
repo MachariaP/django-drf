@@ -105,21 +105,132 @@ Access auto-generated interactive documentation:
 
 ## 🔐 Authentication
 
-Most endpoints allow read-only access without authentication. To create, update, or delete:
+The API provides comprehensive authentication endpoints using Django's built-in secure authentication system.
 
-1. Get a token:
-   ```bash
-   curl -X POST http://127.0.0.1:8000/api/token/ \
-     -d "username=admin&password=admin123"
-   ```
+### Registration
 
-2. Use the token in requests:
-   ```bash
-   curl -X GET http://127.0.0.1:8000/api/books/ \
-     -H "Authorization: Token YOUR_TOKEN_HERE"
-   ```
+Register a new user account:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/register/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Doe"
+  }'
+```
+
+Response:
+```json
+{
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "reviews_count": 0
+  },
+  "token": "your_authentication_token_here",
+  "message": "User registered successfully"
+}
+```
+
+### Login
+
+Login with username and password:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "password": "SecurePass123!"
+  }'
+```
+
+Response:
+```json
+{
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "reviews_count": 0
+  },
+  "token": "your_authentication_token_here",
+  "message": "Login successful"
+}
+```
+
+### Using Authentication Token
+
+Use the token in requests to access protected endpoints:
+
+```bash
+curl -X GET http://127.0.0.1:8000/api/books/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE"
+```
+
+### Get User Profile
+
+Get current user's profile:
+
+```bash
+curl -X GET http://127.0.0.1:8000/api/auth/profile/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE"
+```
+
+### Change Password
+
+Change password for authenticated user:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/change-password/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "old_password": "SecurePass123!",
+    "new_password": "NewSecurePass456!",
+    "new_password_confirm": "NewSecurePass456!"
+  }'
+```
+
+### Logout
+
+Logout and invalidate authentication token:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/auth/logout/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE"
+```
+
+### Legacy Token Endpoint (Still Available)
+
+You can also get a token using the legacy endpoint:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/token/ \
+  -d "username=admin&password=admin123"
+```
 
 ## 📝 Available Endpoints
+
+### Authentication
+```
+POST   /api/auth/register/        - Register a new user
+POST   /api/auth/login/           - Login and get token
+POST   /api/auth/logout/          - Logout and invalidate token
+POST   /api/auth/change-password/ - Change password
+GET    /api/auth/profile/         - Get current user profile
+POST   /api/token/                - Get token (legacy)
+```
 
 ### Books
 ```
@@ -330,7 +441,7 @@ python api_playground.py
 
 ### "401 Unauthorized"
 - You need to authenticate for write operations (POST/PUT/DELETE)
-- Get a token using `/api/token/` endpoint
+- Get a token using `/api/auth/login/` or `/api/auth/register/` endpoint
 - Include token in header: `Authorization: Token YOUR_TOKEN`
 
 ### "404 Not Found"
@@ -339,6 +450,29 @@ python api_playground.py
 
 ### "No data available"
 - Run the seed script: `python seed_books.py`
+
+### "Password validation errors"
+- Passwords must be at least 8 characters long
+- Passwords cannot be too similar to your username or email
+- Passwords cannot be entirely numeric
+- Passwords cannot be too common (e.g., "password123")
+- Use strong passwords with a mix of characters
+
+### "Token is invalid after password change"
+- This is expected behavior for security
+- A new token is issued when you change your password
+- Use the new token returned in the response
+
+---
+
+## 🔒 Security Notes
+
+- All passwords are securely hashed using Django's built-in password hashing (PBKDF2)
+- Passwords are validated using Django's password validators
+- Tokens are invalidated on logout and password change
+- Use HTTPS in production to protect authentication tokens
+- Never share your authentication token
+- Store tokens securely on the client side
 
 ---
 
