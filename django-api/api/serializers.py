@@ -172,3 +172,149 @@ class UserSerializer(serializers.ModelSerializer):
     def get_reviews_count(self, obj: User) -> int:
         """Return the total number of reviews written by the user."""
         return obj.reviews.count()
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user registration with Django's built-in password validation.
+    """
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Password must be at least 8 characters long'
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Re-enter password for confirmation'
+    )
+    
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
+        extra_kwargs = {
+            'email': {'required': True},
+            'first_name': {'required': False},
+            'last_name': {'required': False},
+        }
+    
+    def validate_email(self, value: str) -> str:
+        """Ensure email uniqueness."""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate(self, attrs: dict) -> dict:
+        """Validate password match and strength using Django validators."""
+        from django.contrib.auth.password_validation import validate_password
+        
+        password = attrs.get('password')
+        password_confirm = attrs.pop('password_confirm', None)
+        
+        # Check password match
+        if password != password_confirm:
+            raise serializers.ValidationError({'password_confirm': 'Passwords do not match.'})
+        
+        # Validate password using Django's built-in validators
+        try:
+            validate_password(password, user=User(**attrs))
+        except Exception as e:
+            raise serializers.ValidationError({'password': list(e.messages)})
+        
+        return attrs
+    
+    def create(self, validated_data: dict) -> User:
+        """Create user with hashed password."""
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
+        )
+        return user
+
+
+class UserLoginSerializer(serializers.Serializer):
+    """
+    Serializer for user login using Django's authentication.
+    """
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    
+    def validate(self, attrs: dict) -> dict:
+        """Authenticate user credentials."""
+        from django.contrib.auth import authenticate
+        
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        user = authenticate(username=username, password=password)
+        
+        if not user:
+            raise serializers.ValidationError('Invalid username or password.')
+        
+        if not user.is_active:
+            raise serializers.ValidationError('User account is disabled.')
+        
+        attrs['user'] = user
+        return attrs
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """
+    Serializer for changing user password.
+    """
+    old_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    new_password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    new_password_confirm = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={'input_type': 'password'}
+    )
+    
+    def validate_old_password(self, value: str) -> str:
+        """Verify old password is correct."""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Old password is incorrect.')
+        return value
+    
+    def validate(self, attrs: dict) -> dict:
+        """Validate new password match and strength."""
+        from django.contrib.auth.password_validation import validate_password
+        
+        new_password = attrs.get('new_password')
+        new_password_confirm = attrs.get('new_password_confirm')
+        
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError({'new_password_confirm': 'Passwords do not match.'})
+        
+        # Validate new password using Django's validators
+        try:
+            validate_password(new_password, user=self.context['request'].user)
+        except Exception as e:
+            raise serializers.ValidationError({'new_password': list(e.messages)})
+        
+        return attrs
+    
+    def save(self):
+        """Update user password."""
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
