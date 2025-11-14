@@ -14,7 +14,6 @@ services:
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    # REMOVED: startCommand  ← THIS IS THE FIX
     healthCheckPath: /api/
     autoDeploy: true
     envVars:
