@@ -1,11 +1,9 @@
 from django.contrib import admin
-from import_export.admin import ImportExportModelAdmin
 from .models import Author, Category, Publisher, Book, Review
 
 
 @admin.register(Author)
-#class AuthorAdmin(admin.ModelAdmin):
-class AuthorAdmin(ImportExportModelAdmin):
+class AuthorAdmin(admin.ModelAdmin):
     """
     Admin interface for the Author model.
 
@@ -19,8 +17,7 @@ class AuthorAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Category)
-#class CategoryAdmin(admin.ModelAdmin):
-class CategoryAdmin(ImportExportModelAdmin):
+class CategoryAdmin(admin.ModelAdmin):
     """
     Admin interface for the Category model.
 
@@ -33,8 +30,7 @@ class CategoryAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Publisher)
-#class PublisherAdmin(admin.ModelAdmin):
-class PublisherAdmin(ImportExportModelAdmin):
+class PublisherAdmin(admin.ModelAdmin):
     """
     Admin interface for the Publisher model.
 
@@ -46,8 +42,7 @@ class PublisherAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Book)
-#class BookAdmin(admin.ModelAdmin):
-class BookAdmin(ImportExportModelAdmin):
+class BookAdmin(admin.ModelAdmin):
     """
     Admin interface for the Book model.
 
@@ -64,8 +59,7 @@ class BookAdmin(ImportExportModelAdmin):
 
 
 @admin.register(Review)
-#class ReviewAdmin(admin.ModelAdmin):
-class ReviewAdmin(ImportExportModelAdmin):
+class ReviewAdmin(admin.ModelAdmin):
     """
     Admin interface for the Review model.
 
