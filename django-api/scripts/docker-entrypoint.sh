@@ -30,24 +30,41 @@ spinner() {
 step() {
     local msg=$1
     shift
-    echo -n "${YELLOW}➜ $msg …${NC}"
+    echo -n "${YELLOW}→ $msg …${NC}"
     "$@" &
     spinner $! "$msg"
 }
 
-# ────── 1. Wait for Postgres ───────────────────────────────
+# ────── 1. Wait for Postgres (using psql) ─────────────────────
 step "Waiting for PostgreSQL" bash -c '
-    until pg_isready -h "$POSTGRES_HOST" -p 5432 -U "$POSTGRES_USER" > /dev/null 2>&1; do
-        sleep 1
+    attempt=1
+    max=30
+    while true; do
+        PGPASSWORD="${DATABASE_URL_PASSWORD}" psql \
+            -h "${DATABASE_URL_HOST}" \
+            -p "${DATABASE_URL_PORT}" \
+            -U "${DATABASE_URL_USER}" \
+            -d "${DATABASE_URL_DATABASE}" \
+            -c "\q" > /dev/null 2>&1 && break
+
+        if (( attempt >= max )); then
+            echo -e "\n${RED}Failed to connect after $max attempts${NC}"
+            exit 1
+        fi
+        echo -e "\n   Attempt $attempt/$max – retrying in 5s…"
+        sleep 5
+        ((attempt++))
     done
 '
 
-# ────── 2. Wait for Redis ───────────────────────────────────
-step "Waiting for Redis" bash -c '
-    until redis-cli -h redis ping | grep -q PONG > /dev/null 2>&1; do
-        sleep 1
-    done
-'
+# ────── 2. Wait for Redis (optional) ────────────────────────
+if [[ -n "${REDIS_URL:-}" ]]; then
+    step "Waiting for Redis" bash -c '
+        until redis-cli -u "$REDIS_URL" ping | grep -q PONG > /dev/null 2>&1; do
+            sleep 1
+        done
+    '
+fi
 
 # ────── 3. Django migrations ───────────────────────────────
 step "Running migrations" python manage.py migrate --noinput
@@ -56,17 +73,19 @@ step "Running migrations" python manage.py migrate --noinput
 step "Collecting static files" python manage.py collectstatic --noinput
 
 # ────── 5. Create superuser (idempotent) ─────────────────────
-step "Creating superuser" python manage.py createsuperuser \
-    --username "$DJANGO_SUPERUSER_USERNAME" \
-    --email "$DJANGO_SUPERUSER_EMAIL" \
-    --password "$DJANGO_SUPERUSER_PASSWORD" \
-    --noinput || true
+if [[ -n "${DJANGO_SUPERUSER_USERNAME:-}" && -n "${DJANGO_SUPERUSER_PASSWORD:-}" ]]; then
+    step "Creating superuser" python manage.py createsuperuser \
+        --username "$DJANGO_SUPERUSER_USERNAME" \
+        --email "${DJANGO_SUPERUSER_EMAIL:-}" \
+        --password "$DJANGO_SUPERUSER_PASSWORD" \
+        --noinput || true
+fi
 
 # ────── 6. Seed data (idempotent) ───────────────────────────
-step "Seeding database" python manage.py seed_data || true   # ignore if command missing
+step "Seeding database" python manage.py seed_data || true
 
 # ────── 7. Start Gunicorn ───────────────────────────────────
 echo -e "${GREEN}All systems GO! Starting Gunicorn…${NC}"
-exec gunicorn your_project_name.wsgi:application \
+exec gunicorn config.wsgi:application \
     --config gunicorn_config.py \
     --bind 0.0.0.0:8000

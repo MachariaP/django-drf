@@ -3,8 +3,21 @@ Django settings for config project.
 """
 
 import os
+from urllib.parse import urlparse   # <-- NEW
 import dj_database_url
 from pathlib import Path
+
+# ----------------------------------------------------------------------
+# Parse DATABASE_URL (Render provides this) and expose components
+# ----------------------------------------------------------------------
+if os.getenv('DATABASE_URL'):
+    db_url = urlparse(os.environ['DATABASE_URL'])
+    # Export the pieces so the entrypoint script can read them
+    os.environ['DATABASE_URL_HOST']     = db_url.hostname
+    os.environ['DATABASE_URL_PORT']     = str(db_url.port or 5432)
+    os.environ['DATABASE_URL_DATABASE'] = db_url.path[1:]   # strip leading /
+    os.environ['DATABASE_URL_USER']     = db_url.username
+    os.environ['DATABASE_URL_PASSWORD'] = db_url.password
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -15,7 +28,9 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']  # Nginx handles security
 
+# ----------------------------------------------------------------------
 # Application definition
+# ----------------------------------------------------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -64,13 +79,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# DATABASE — USES DATABASE_URL FROM docker-compose.yml
+# ----------------------------------------------------------------------
+# DATABASE – USES DATABASE_URL FROM Render
+# ----------------------------------------------------------------------
 DATABASES = {
     'default': dj_database_url.parse(
         os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3')
     )
 }
 
+# ----------------------------------------------------------------------
+# The rest of your file (unchanged)
+# ----------------------------------------------------------------------
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -79,7 +99,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -88,15 +107,7 @@ USE_TZ = True
 # Static & Media
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
-
-if DEBUG:
-    STATICFILES_DIRS = [
-            os.path.join(BASE_DIR, 'static'),
-            ] 
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -133,7 +144,7 @@ REST_FRAMEWORK = {
     'ALLOWED_VERSIONS': ['v1', 'v2'],
 }
 
-# CACHES — Use REDIS_URL from docker-compose.yml
+# CACHES – Redis (optional)
 REDIS_URL = os.getenv('REDIS_URL')
 if REDIS_URL:
     try:
@@ -144,9 +155,7 @@ if REDIS_URL:
             'default': {
                 'BACKEND': 'django_redis.cache.RedisCache',
                 'LOCATION': REDIS_URL,
-                'OPTIONS': {
-                    'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-                }
+                'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
             }
         }
     except Exception as e:
