@@ -107,7 +107,9 @@ USE_TZ = True
 # Static & Media
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# Only add static dir if it exists (for development)
+static_dir = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = [static_dir] if os.path.exists(static_dir) else []
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

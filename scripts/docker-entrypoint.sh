@@ -15,12 +15,19 @@ import sys
 import psycopg2
 try:
     conn_str = os.getenv('DATABASE_URL', '')
-    if 'postgresql' in conn_str:
-        # Parse connection string
+    if not conn_str:
+        print('ERROR: DATABASE_URL not set')
+        sys.exit(1)
+    if 'postgres' in conn_str:
+        # Parse connection string - handle both postgres:// and postgresql://
         import re
-        match = re.search(r'postgresql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', conn_str)
+        # Normalize postgres:// to postgresql://
+        conn_str = conn_str.replace('postgres://', 'postgresql://', 1)
+        match = re.search(r'postgresql://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)', conn_str)
         if match:
             user, password, host, port, dbname = match.groups()
+            port = port or '5432'
+            print(f'Connecting to {host}:{port}/{dbname} as {user}...')
             conn = psycopg2.connect(
                 dbname=dbname,
                 user=user,
@@ -31,11 +38,16 @@ try:
             )
             conn.close()
             sys.exit(0)
-    sys.exit(1)
+        else:
+            print(f'ERROR: Could not parse DATABASE_URL format')
+            sys.exit(1)
+    else:
+        print(f'ERROR: DATABASE_URL does not contain postgres')
+        sys.exit(1)
 except Exception as e:
     print(f'Database connection failed: {e}')
     sys.exit(1)
-" 2>/dev/null; then
+"; then
         echo "✅ Database is ready!"
         break
     fi
@@ -86,6 +98,12 @@ fi
 # Run database migrations
 echo "📦 Running database migrations..."
 python manage.py migrate --noinput
+
+# Create superuser if environment variables are set
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo "👤 Creating superuser..."
+    python manage.py createsuperuser --noinput || echo "⚠️  Superuser creation skipped (may already exist)"
+fi
 
 # Collect static files
 echo "📁 Collecting static files..."

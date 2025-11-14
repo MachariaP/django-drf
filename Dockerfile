@@ -47,6 +47,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["/app/docker-entrypoint.sh"]
-
-# Gunicorn is started from the entrypoint script
+# Set entrypoint and default command
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--config", "gunicorn_config.py"]
