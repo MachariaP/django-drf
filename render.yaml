@@ -14,7 +14,7 @@ services:
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    startCommand: ./scripts/docker-entrypoint.sh
+    # REMOVED: startCommand  ← THIS IS THE FIX
     healthCheckPath: /api/
     autoDeploy: true
     envVars:
