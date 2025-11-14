@@ -27,19 +27,22 @@ services:
 
   web:
     build: .
+    user: "1000:1000"                     # matches the UID/GID of the host user
     entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
     command: ["gunicorn", "--config", "gunicorn_config.py", "config.wsgi:application"]
     volumes:
-      - ./django-api:/app
-      - static_volume:/app/staticfiles
-      - media_volume:/app/media
+      - ./django-api:/app                 # source code
+      - static_volume:/app/staticfiles    # collected static files
+      - media_volume:/app/media           # uploaded media
     environment:
       - DEBUG=False
       - DATABASE_URL=postgresql://drf_user:30937594PHINE@db:5432/django_drf_db
       - REDIS_URL=redis://redis:6379/1
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
       interval: 30s
@@ -53,17 +56,18 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - static_volume:/staticfiles
-      - media_volume:/media
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/staticfiles:ro
+      - media_volume:/media:ro
     depends_on:
-      - web
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://web:8000/api/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+      web:
+        condition: service_healthy
+    # healthcheck:
+    #test: ["CMD", "curl", "-f", "http://web:8000/api/"]
+    #interval: 30s
+    #timeout: 10s
+    #retries: 5
+    #start_period: 60s
 
 volumes:
   postgres_data:
