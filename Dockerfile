@@ -27,8 +27,8 @@ RUN pip install --upgrade pip && \
 
 # ---------- Project files ----------
 COPY django-api /app/
-COPY scripts/docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # ---------- Directories & permissions ----------
 # Create the directories that will be used by volumes
@@ -46,5 +46,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/api/health/ || exit 1
 
 EXPOSE 8000
+
+CMD ["/app/docker-entrypoint.sh"]
 
 # Gunicorn is started from the entrypoint script
