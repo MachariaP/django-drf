@@ -143,7 +143,7 @@ class HealthCheckAPITestCase(APITestCase):
 
 
 class UserRegistrationAPITestCase(APITestCase):
-    """Test cases for user registration endpoint."""
+    """Test cases for user registration endpoint - DEPRECATED: Use AuthenticationAPITestCase instead."""
     
     def setUp(self):
         """Set up test client."""
@@ -151,14 +151,15 @@ class UserRegistrationAPITestCase(APITestCase):
         self.valid_user_data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
-            'password': 'securepass123',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
             'first_name': 'New',
             'last_name': 'User'
         }
     
     def test_register_user_success(self):
         """Test successful user registration."""
-        response = self.client.post('/api/register/', self.valid_user_data)
+        response = self.client.post('/api/auth/register/', self.valid_user_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('token', response.data)
         self.assertIn('user', response.data)
@@ -176,55 +177,58 @@ class UserRegistrationAPITestCase(APITestCase):
         """Test registration fails with missing required fields."""
         # Missing password
         data = {'username': 'testuser', 'email': 'test@example.com'}
-        response = self.client.post('/api/register/', data)
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('error', response.data)
+        self.assertTrue('password' in response.data or 'password_confirm' in response.data)
     
     def test_register_user_duplicate_username(self):
         """Test registration fails with duplicate username."""
         # Create a user first
-        User.objects.create_user(username='existinguser', password='pass123', email='existing@example.com')
+        User.objects.create_user(username='existinguser', password='SecurePass123!', email='existing@example.com')
         
         # Try to create another user with same username
         data = {
             'username': 'existinguser',
             'email': 'different@example.com',
-            'password': 'password123'
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!'
         }
-        response = self.client.post('/api/register/', data)
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Username already exists', response.data['error'])
+        self.assertIn('username', response.data)
     
     def test_register_user_duplicate_email(self):
         """Test registration fails with duplicate email."""
         # Create a user first
-        User.objects.create_user(username='user1', password='pass123', email='same@example.com')
+        User.objects.create_user(username='user1', password='SecurePass123!', email='same@example.com')
         
         # Try to create another user with same email
         data = {
             'username': 'user2',
             'email': 'same@example.com',
-            'password': 'password123'
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!'
         }
-        response = self.client.post('/api/register/', data)
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('Email already exists', response.data['error'])
+        self.assertIn('email', response.data)
     
     def test_register_user_short_password(self):
         """Test registration fails with password less than 8 characters."""
         data = {
             'username': 'testuser',
             'email': 'test@example.com',
-            'password': 'short'
+            'password': 'short',
+            'password_confirm': 'short'
         }
-        response = self.client.post('/api/register/', data)
+        response = self.client.post('/api/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('at least 8 characters', response.data['error'])
+        self.assertIn('password', response.data)
     
     def test_register_user_can_login_with_token(self):
         """Test that registered user can authenticate with the returned token."""
         # Register a new user
-        response = self.client.post('/api/register/', self.valid_user_data)
+        response = self.client.post('/api/auth/register/', self.valid_user_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         token = response.data['token']
         
@@ -232,3 +236,274 @@ class UserRegistrationAPITestCase(APITestCase):
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
         response = self.client.get('/api/books/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class AuthenticationAPITestCase(APITestCase):
+    """Comprehensive test cases for authentication endpoints."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.client = APIClient()
+        self.register_url = '/api/auth/register/'
+        self.login_url = '/api/auth/login/'
+        self.logout_url = '/api/auth/logout/'
+        self.password_change_url = '/api/auth/change-password/'
+        self.profile_url = '/api/auth/profile/'
+        
+        # Valid user data for testing
+        self.valid_user_data = {
+            'username': 'testuser',
+            'email': 'test@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'first_name': 'Test',
+            'last_name': 'User'
+        }
+    
+    def test_user_registration_success(self):
+        """Test successful user registration with valid data."""
+        response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('user', response.data)
+        self.assertIn('token', response.data)
+        self.assertIn('message', response.data)
+        self.assertEqual(response.data['user']['username'], 'testuser')
+        self.assertEqual(response.data['user']['email'], 'test@example.com')
+        self.assertEqual(response.data['message'], 'User registered successfully')
+    
+    def test_user_registration_duplicate_username(self):
+        """Test registration fails with duplicate username."""
+        # Create first user
+        self.client.post(self.register_url, self.valid_user_data, format='json')
+        
+        # Try to create another user with same username
+        duplicate_data = self.valid_user_data.copy()
+        duplicate_data['email'] = 'different@example.com'
+        response = self.client.post(self.register_url, duplicate_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('username', response.data)
+    
+    def test_user_registration_duplicate_email(self):
+        """Test registration fails with duplicate email."""
+        # Create first user
+        self.client.post(self.register_url, self.valid_user_data, format='json')
+        
+        # Try to create another user with same email
+        duplicate_data = self.valid_user_data.copy()
+        duplicate_data['username'] = 'different'
+        response = self.client.post(self.register_url, duplicate_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+    
+    def test_user_registration_password_mismatch(self):
+        """Test registration fails when passwords don't match."""
+        data = self.valid_user_data.copy()
+        data['password_confirm'] = 'DifferentPass123!'
+        response = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password_confirm', response.data)
+    
+    def test_user_registration_weak_password(self):
+        """Test registration fails with weak password using Django validators."""
+        data = self.valid_user_data.copy()
+        data['password'] = '12345'
+        data['password_confirm'] = '12345'
+        response = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+    
+    def test_user_registration_common_password(self):
+        """Test registration fails with common password."""
+        data = self.valid_user_data.copy()
+        data['password'] = 'password123'
+        data['password_confirm'] = 'password123'
+        response = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+    
+    def test_user_login_success(self):
+        """Test successful login with valid credentials."""
+        # Register user first
+        self.client.post(self.register_url, self.valid_user_data, format='json')
+        
+        # Login
+        login_data = {
+            'username': 'testuser',
+            'password': 'SecurePass123!'
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('user', response.data)
+        self.assertIn('token', response.data)
+        self.assertIn('message', response.data)
+        self.assertEqual(response.data['message'], 'Login successful')
+    
+    def test_user_login_invalid_credentials(self):
+        """Test login fails with invalid credentials."""
+        # Register user first
+        self.client.post(self.register_url, self.valid_user_data, format='json')
+        
+        # Try to login with wrong password
+        login_data = {
+            'username': 'testuser',
+            'password': 'WrongPassword123!'
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)
+    
+    def test_user_login_nonexistent_user(self):
+        """Test login fails with non-existent user."""
+        login_data = {
+            'username': 'nonexistent',
+            'password': 'SomePassword123!'
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    
+    def test_user_logout_success(self):
+        """Test successful logout."""
+        # Register and login
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Logout
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        
+        # Verify token is invalidated
+        response = self.client.get(self.profile_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_user_logout_without_auth(self):
+        """Test logout fails without authentication."""
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_get_user_profile_success(self):
+        """Test getting user profile with valid token."""
+        # Register user
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Get profile
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        response = self.client.get(self.profile_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['username'], 'testuser')
+        self.assertEqual(response.data['email'], 'test@example.com')
+    
+    def test_get_user_profile_without_auth(self):
+        """Test getting profile fails without authentication."""
+        response = self.client.get(self.profile_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_password_change_success(self):
+        """Test successful password change."""
+        # Register user
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Change password
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        change_data = {
+            'old_password': 'SecurePass123!',
+            'new_password': 'NewSecurePass456!',
+            'new_password_confirm': 'NewSecurePass456!'
+        }
+        response = self.client.post(self.password_change_url, change_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        self.assertIn('token', response.data)  # New token issued
+        
+        # Verify old token is invalidated
+        old_token = token
+        new_token = response.data['token']
+        self.assertNotEqual(old_token, new_token)
+        
+        # Verify can login with new password
+        self.client.credentials()
+        login_data = {
+            'username': 'testuser',
+            'password': 'NewSecurePass456!'
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+    
+    def test_password_change_wrong_old_password(self):
+        """Test password change fails with wrong old password."""
+        # Register user
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Try to change password with wrong old password
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        change_data = {
+            'old_password': 'WrongOldPass123!',
+            'new_password': 'NewSecurePass456!',
+            'new_password_confirm': 'NewSecurePass456!'
+        }
+        response = self.client.post(self.password_change_url, change_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('old_password', response.data)
+    
+    def test_password_change_new_passwords_mismatch(self):
+        """Test password change fails when new passwords don't match."""
+        # Register user
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Try to change password with mismatched new passwords
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        change_data = {
+            'old_password': 'SecurePass123!',
+            'new_password': 'NewSecurePass456!',
+            'new_password_confirm': 'DifferentPass456!'
+        }
+        response = self.client.post(self.password_change_url, change_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('new_password_confirm', response.data)
+    
+    def test_password_change_weak_new_password(self):
+        """Test password change fails with weak new password."""
+        # Register user
+        register_response = self.client.post(self.register_url, self.valid_user_data, format='json')
+        token = register_response.data['token']
+        
+        # Try to change to weak password
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + token)
+        change_data = {
+            'old_password': 'SecurePass123!',
+            'new_password': '12345',
+            'new_password_confirm': '12345'
+        }
+        response = self.client.post(self.password_change_url, change_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('new_password', response.data)
+    
+    def test_password_change_without_auth(self):
+        """Test password change fails without authentication."""
+        change_data = {
+            'old_password': 'SecurePass123!',
+            'new_password': 'NewSecurePass456!',
+            'new_password_confirm': 'NewSecurePass456!'
+        }
+        response = self.client.post(self.password_change_url, change_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_password_hashing(self):
+        """Test that passwords are properly hashed."""
+        # Register user
+        self.client.post(self.register_url, self.valid_user_data, format='json')
+        
+        # Get user from database
+        user = User.objects.get(username='testuser')
+        
+        # Verify password is hashed (not stored in plaintext)
+        self.assertNotEqual(user.password, 'SecurePass123!')
+        self.assertTrue(user.password.startswith('pbkdf2_sha256'))
+        
+        # Verify password can be checked
+        self.assertTrue(user.check_password('SecurePass123!'))

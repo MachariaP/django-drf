@@ -3,6 +3,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -13,7 +14,8 @@ from api.pagination import StandardResultsSetPagination
 from .models import Author, Category, Publisher, Book, Review
 from .serializers import (
     AuthorSerializer, CategorySerializer, PublisherSerializer,
-    BookListSerializer, BookDetailSerializer, ReviewSerializer, UserSerializer
+    BookListSerializer, BookDetailSerializer, ReviewSerializer, UserSerializer,
+    UserRegistrationSerializer, UserLoginSerializer, PasswordChangeSerializer
 )
 
 
@@ -249,18 +251,38 @@ def health_check(request):
         }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
+@extend_schema(
+    request=UserRegistrationSerializer,
+    responses={201: UserSerializer},
+    description='Register a new user with secure password validation',
+    examples=[
+        OpenApiExample(
+            'Registration Example',
+            value={
+                'username': 'johndoe',
+                'email': 'john@example.com',
+                'password': 'SecurePass123!',
+                'password_confirm': 'SecurePass123!',
+                'first_name': 'John',
+                'last_name': 'Doe'
+            }
+        )
+    ]
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     """
-    User registration endpoint.
+    User registration endpoint using Django's secure password validation.
     
-    Creates a new user account and returns authentication token.
+    Creates a new user account with hashed password and returns authentication token.
+    Uses Django's built-in password validators for security.
     
     Request body:
         - username (required): Unique username
         - email (required): Email address
-        - password (required): Password (min 8 characters)
+        - password (required): Password (validated by Django)
+        - password_confirm (required): Password confirmation
         - first_name (optional): First name
         - last_name (optional): Last name
     
@@ -268,61 +290,199 @@ def register_user(request):
         - 201 Created: User created successfully with token
         - 400 Bad Request: Validation errors
     
-    Example: POST /api/register/
+    Example: POST /api/auth/register/
     """
     from rest_framework.authtoken.models import Token
     
-    # Validate required fields
-    username = request.data.get('username')
-    email = request.data.get('email')
-    password = request.data.get('password')
+    serializer = UserRegistrationSerializer(data=request.data)
     
-    if not username or not email or not password:
-        return Response({
-            'error': 'Username, email, and password are required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Check if username already exists
-    if User.objects.filter(username=username).exists():
-        return Response({
-            'error': 'Username already exists'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Check if email already exists
-    if User.objects.filter(email=email).exists():
-        return Response({
-            'error': 'Email already exists'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate password length
-    if len(password) < 8:
-        return Response({
-            'error': 'Password must be at least 8 characters long'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        # Create user
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            first_name=request.data.get('first_name', ''),
-            last_name=request.data.get('last_name', '')
-        )
+    if serializer.is_valid():
+        # Create user with hashed password
+        user = serializer.save()
         
-        # Create token for the user
-        token = Token.objects.create(user=user)
+        # Create or get token for the user
+        token, created = Token.objects.get_or_create(user=user)
         
         # Serialize user data
-        serializer = UserSerializer(user)
+        user_serializer = UserSerializer(user)
         
         return Response({
-            'user': serializer.data,
+            'user': user_serializer.data,
             'token': token.key,
-            'message': 'User created successfully'
+            'message': 'User registered successfully'
         }, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=UserLoginSerializer,
+    responses={200: UserSerializer},
+    description='Login with username and password using Django authentication',
+    examples=[
+        OpenApiExample(
+            'Login Example',
+            value={
+                'username': 'johndoe',
+                'password': 'SecurePass123!'
+            }
+        )
+    ]
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    """
+    User login endpoint using Django's authentication system.
+    
+    Authenticates user credentials and returns authentication token.
+    Uses Django's built-in authenticate() method for security.
+    
+    Request body:
+        - username (required): Username
+        - password (required): Password
+    
+    Returns:
+        - 200 OK: Login successful with token
+        - 400 Bad Request: Invalid credentials or validation errors
+    
+    Example: POST /api/auth/login/
+    """
+    from rest_framework.authtoken.models import Token
+    
+    serializer = UserLoginSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        user = serializer.validated_data['user']
         
+        # Create or get token for the user
+        token, created = Token.objects.get_or_create(user=user)
+        
+        # Serialize user data
+        user_serializer = UserSerializer(user)
+        
+        return Response({
+            'user': user_serializer.data,
+            'token': token.key,
+            'message': 'Login successful'
+        }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=None,
+    responses={200: {'type': 'object', 'properties': {'message': {'type': 'string'}}}},
+    description='Logout current user and invalidate authentication token'
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_user(request):
+    """
+    User logout endpoint.
+    
+    Invalidates the user's authentication token for security.
+    Requires authentication token in header.
+    
+    Headers:
+        - Authorization: Token <your_token>
+    
+    Returns:
+        - 200 OK: Logout successful
+        - 401 Unauthorized: Not authenticated
+    
+    Example: POST /api/auth/logout/
+    """
+    try:
+        # Delete the user's token
+        request.user.auth_token.delete()
+        return Response({
+            'message': 'Logout successful'
+        }, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({
-            'error': f'Error creating user: {str(e)}'
+            'error': f'Error during logout: {str(e)}'
         }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=PasswordChangeSerializer,
+    responses={200: {'type': 'object', 'properties': {'message': {'type': 'string'}, 'token': {'type': 'string'}}}},
+    description='Change password for authenticated user with Django validation',
+    examples=[
+        OpenApiExample(
+            'Password Change Example',
+            value={
+                'old_password': 'OldPass123!',
+                'new_password': 'NewSecurePass123!',
+                'new_password_confirm': 'NewSecurePass123!'
+            }
+        )
+    ]
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """
+    Password change endpoint for authenticated users.
+    
+    Changes user password using Django's secure password validation.
+    Requires authentication token and validates old password.
+    
+    Request body:
+        - old_password (required): Current password
+        - new_password (required): New password (validated by Django)
+        - new_password_confirm (required): New password confirmation
+    
+    Headers:
+        - Authorization: Token <your_token>
+    
+    Returns:
+        - 200 OK: Password changed successfully
+        - 400 Bad Request: Validation errors
+        - 401 Unauthorized: Not authenticated
+    
+    Example: POST /api/auth/change-password/
+    """
+    from rest_framework.authtoken.models import Token
+    
+    serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+    
+    if serializer.is_valid():
+        serializer.save()
+        
+        # Delete old token and create new one for security
+        request.user.auth_token.delete()
+        token = Token.objects.create(user=request.user)
+        
+        return Response({
+            'message': 'Password changed successfully',
+            'token': token.key
+        }, status=status.HTTP_200_OK)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    responses={200: UserSerializer},
+    description='Get current authenticated user profile'
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_profile(request):
+    """
+    Get current user profile.
+    
+    Returns the authenticated user's profile information.
+    
+    Headers:
+        - Authorization: Token <your_token>
+    
+    Returns:
+        - 200 OK: User profile data
+        - 401 Unauthorized: Not authenticated
+    
+    Example: GET /api/auth/profile/
+    """
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data, status=status.HTTP_200_OK)

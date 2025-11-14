@@ -128,6 +128,45 @@ python manage.py runserver
 - **API Documentation (Swagger)**: http://localhost:8000/api/schema/swagger-ui/
 - **API Documentation (ReDoc)**: http://localhost:8000/api/schema/redoc/
 
+### 🔑 Quick Authentication Setup
+
+**Register a new user:**
+```bash
+curl -X POST http://localhost:8000/api/auth/register/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!"
+  }'
+```
+
+**Login and get token:**
+```bash
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "password": "SecurePass123!"
+  }'
+```
+
+**Use token in API requests:**
+```bash
+curl http://localhost:8000/api/books/ \
+  -H "Authorization: Token YOUR_TOKEN_HERE"
+```
+
+**Available authentication endpoints:**
+- `POST /api/auth/register/` - Register new user with secure password validation
+- `POST /api/auth/login/` - Login and receive authentication token
+- `POST /api/auth/logout/` - Logout and invalidate token
+- `GET /api/auth/profile/` - Get current user profile
+- `POST /api/auth/change-password/` - Change password securely
+
+For detailed API testing examples, see [API_TESTING_GUIDE.md](API_TESTING_GUIDE.md).
+
 ---
 
 ## 🎯 Project Overview
@@ -375,6 +414,10 @@ erDiagram
 ### 🔐 Authentication & Authorization
 
 * 🔑 **Multi-Scheme Authentication** - Supports both TokenAuthentication for stateless API access (ideal for mobile apps and SPAs) and SessionAuthentication for browser-based clients. Token auth provides a secure, scalable authentication method where clients include a bearer token in request headers. Session auth leverages Django's built-in session framework for traditional web applications.
+
+* 🆕 **Complete Authentication API** - Full suite of authentication endpoints including user registration, login, logout, password change, and user profile. All endpoints use Django's built-in secure password hashing (PBKDF2) and password validators to ensure strong password requirements. Registration validates password strength, uniqueness of username/email, and requires password confirmation.
+
+* 🔒 **Secure Password Management** - Implements Django's comprehensive password validation system that checks for minimum length (8 characters), common passwords, numeric-only passwords, and similarity to user attributes. Passwords are never stored in plain text - they're hashed using PBKDF2 with SHA256. Password changes invalidate existing tokens for security.
 
 * 🛡️ **Granular Permission System** - Fine-grained access control through reusable permission classes. IsAuthenticatedOrReadOnly allows public read access but requires authentication for modifications. Custom permissions can enforce complex business rules like "users can only edit their own reviews" or "only staff can delete books". Permission logic is centralized and easy to test.
 
