@@ -251,6 +251,9 @@ Visit the interactive API documentation:
 | `DJANGO_SUPERUSER_EMAIL` | Admin email | `admin@example.com` |
 | `ALLOWED_HOSTS` | Allowed hosts | `*` |
 | `CORS_ALLOWED_ORIGINS` | CORS origins | Update in settings |
+| `WEB_CONCURRENCY` | Number of Gunicorn workers | `2` (for free tier) |
+| `THREADS_PER_WORKER` | Threads per worker | `4` |
+| `WORKER_CLASS` | Gunicorn worker class | `gthread` |
 
 ---
 
@@ -336,6 +339,22 @@ Many endpoints allow GET requests without authentication but require a token for
 2. Verify all environment variables are set
 3. Test locally with Docker: `docker-compose up`
 4. Ensure migrations are up to date
+
+### Out of Memory (Free Tier)
+
+**Issue:** "Out of memory (used over 512Mi)"
+
+**Solutions:**
+1. The free tier has a 512MB memory limit
+2. Reduce number of Gunicorn workers:
+   - Set `WEB_CONCURRENCY=2` in environment variables (already configured in `render.yaml`)
+   - Use `gthread` worker class for better memory efficiency (default)
+   - Increase threads per worker: `THREADS_PER_WORKER=4` (default)
+3. Memory breakdown:
+   - 2 workers × ~100MB = 200MB
+   - Base overhead = ~200MB
+   - Total = ~400MB (safe for 512MB limit)
+4. For higher traffic, consider upgrading to a paid plan with more memory
 
 ---
 
