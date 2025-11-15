@@ -7,7 +7,7 @@ from .models import Author, Category, Publisher, Book, Review
 
 class AuthorSerializer(serializers.ModelSerializer):
     full_name = serializers.ReadOnlyField()
-    books_count = serializers.SerializerMethodField()
+    books_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Author
@@ -17,11 +17,6 @@ class AuthorSerializer(serializers.ModelSerializer):
             'books_count', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
-
-    @extend_schema_field(int)
-    def get_books_count(self, obj: Author) -> int:
-        """Return the total number of books associated with the author."""
-        return obj.books.count()
 
     def validate_email(self, value: str) -> str:
         """Ensure email uniqueness across all authors."""
@@ -34,21 +29,16 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    books_count = serializers.SerializerMethodField()
+    books_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Category
         fields = ['id', 'name', 'description', 'slug', 'books_count', 'created_at']
         read_only_fields = ['created_at']
 
-    @extend_schema_field(int)
-    def get_books_count(self, obj: Category) -> int:
-        """Return the number of books in this category."""
-        return obj.books.count()
-
 
 class PublisherSerializer(serializers.ModelSerializer):
-    books_count = serializers.SerializerMethodField()
+    books_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Publisher
@@ -58,16 +48,11 @@ class PublisherSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at']
 
-    @extend_schema_field(int)
-    def get_books_count(self, obj: Publisher) -> int:
-        """Return the number of books published by this publisher."""
-        return obj.books.count()
-
 
 class BookListSerializer(serializers.ModelSerializer):
     author_name = serializers.CharField(source='author.full_name', read_only=True)
     categories = serializers.StringRelatedField(many=True, read_only=True)
-    average_rating = serializers.SerializerMethodField()
+    average_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Book
@@ -75,14 +60,6 @@ class BookListSerializer(serializers.ModelSerializer):
             'id', 'title', 'author_name', 'categories',
             'price', 'status', 'average_rating', 'publication_date'
         ]
-
-    @extend_schema_field(float)
-    def get_average_rating(self, obj: Book) -> Optional[float]:
-        """Calculate the average rating from all reviews."""
-        reviews = obj.reviews.all()
-        if reviews:
-            return sum(review.rating for review in reviews) / len(reviews)
-        return None
 
 
 class BookDetailSerializer(serializers.ModelSerializer):
@@ -107,8 +84,8 @@ class BookDetailSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    reviews_count = serializers.SerializerMethodField()
-    average_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.IntegerField(read_only=True)
+    average_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Book
@@ -120,19 +97,6 @@ class BookDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
-
-    @extend_schema_field(int)
-    def get_reviews_count(self, obj: Book) -> int:
-        """Return total number of reviews for the book."""
-        return obj.reviews.count()
-
-    @extend_schema_field(float)
-    def get_average_rating(self, obj: Book) -> Optional[float]:
-        """Return average rating rounded to 2 decimal places."""
-        reviews = obj.reviews.all()
-        if reviews:
-            return round(sum(review.rating for review in reviews) / len(reviews), 2)
-        return None
 
 
 class ReviewSerializer(serializers.ModelSerializer):

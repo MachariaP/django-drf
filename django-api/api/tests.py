@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from .models import Author, Book, Category
+from .models import Author, Book, Category, Publisher, Review
 
 
 class AuthorAPITestCase(APITestCase):
@@ -507,3 +507,150 @@ class AuthenticationAPITestCase(APITestCase):
         
         # Verify password can be checked
         self.assertTrue(user.check_password('SecurePass123!'))
+
+
+class ReviewPermissionTestCase(APITestCase):
+    """Test cases for review permission enforcement."""
+    
+    def setUp(self):
+        """Set up test data."""
+        self.client = APIClient()
+        
+        # Create two users
+        self.user1 = User.objects.create_user(
+            username='user1',
+            password='testpass123',
+            email='user1@example.com'
+        )
+        self.user2 = User.objects.create_user(
+            username='user2',
+            password='testpass123',
+            email='user2@example.com'
+        )
+        
+        # Create tokens
+        self.token1 = Token.objects.create(user=self.user1)
+        self.token2 = Token.objects.create(user=self.user2)
+        
+        # Create test data
+        self.author = Author.objects.create(
+            first_name='Test',
+            last_name='Author',
+            email='author@example.com'
+        )
+        
+        self.book = Book.objects.create(
+            title='Test Book',
+            isbn='1234567890123',
+            author=self.author,
+            publication_date='2023-01-01',
+            pages=300,
+            price=29.99
+        )
+        
+        # Create a review by user1
+        self.review = Review.objects.create(
+            book=self.book,
+            user=self.user1,
+            rating=5,
+            title='Great Book',
+            comment='This is an excellent book!'
+        )
+    
+    def test_unauthenticated_can_read_reviews(self):
+        """Test that unauthenticated users can read reviews."""
+        response = self.client.get('/api/reviews/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+    
+    def test_authenticated_user_can_create_review(self):
+        """Test that authenticated users can create reviews."""
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token1.key)
+        data = {
+            'book': self.book.id,
+            'rating': 4,
+            'title': 'Good Book',
+            'comment': 'I enjoyed this book.'
+        }
+        # Note: user1 already has a review for this book, so this will fail due to unique_together
+        # Let's create a new book for this test
+        new_book = Book.objects.create(
+            title='Another Book',
+            isbn='9876543210987',
+            author=self.author,
+            publication_date='2023-01-01',
+            pages=200,
+            price=19.99
+        )
+        data['book'] = new_book.id
+        response = self.client.post('/api/reviews/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    
+    def test_unauthenticated_cannot_create_review(self):
+        """Test that unauthenticated users cannot create reviews."""
+        data = {
+            'book': self.book.id,
+            'rating': 4,
+            'title': 'Good Book',
+            'comment': 'I enjoyed this book.'
+        }
+        response = self.client.post('/api/reviews/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_owner_can_update_own_review(self):
+        """Test that review owner can update their own review."""
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token1.key)
+        data = {
+            'rating': 4,
+            'title': 'Updated Title',
+            'comment': 'Updated comment.'
+        }
+        response = self.client.patch(f'/api/reviews/{self.review.id}/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['title'], 'Updated Title')
+    
+    def test_owner_can_delete_own_review(self):
+        """Test that review owner can delete their own review."""
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token1.key)
+        response = self.client.delete(f'/api/reviews/{self.review.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Review.objects.count(), 0)
+    
+    def test_non_owner_cannot_update_review(self):
+        """Test that non-owner cannot update another user's review."""
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token2.key)
+        data = {
+            'rating': 1,
+            'title': 'Malicious Update',
+            'comment': 'Trying to modify someone elses review.'
+        }
+        response = self.client.patch(f'/api/reviews/{self.review.id}/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Verify review was not modified
+        self.review.refresh_from_db()
+        self.assertEqual(self.review.title, 'Great Book')
+        self.assertEqual(self.review.rating, 5)
+    
+    def test_non_owner_cannot_delete_review(self):
+        """Test that non-owner cannot delete another user's review."""
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token2.key)
+        response = self.client.delete(f'/api/reviews/{self.review.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        # Verify review still exists
+        self.assertEqual(Review.objects.count(), 1)
+    
+    def test_unauthenticated_cannot_update_review(self):
+        """Test that unauthenticated users cannot update reviews."""
+        data = {
+            'rating': 1,
+            'title': 'Unauthorized Update'
+        }
+        response = self.client.patch(f'/api/reviews/{self.review.id}/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    
+    def test_unauthenticated_cannot_delete_review(self):
+        """Test that unauthenticated users cannot delete reviews."""
+        response = self.client.delete(f'/api/reviews/{self.review.id}/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

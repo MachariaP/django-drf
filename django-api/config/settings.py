@@ -26,6 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
+# PRODUCTION SECURITY WARNING:
+# In production environments, ensure:
+# 1. DEBUG = False (never run with DEBUG=True in production)
+# 2. SECRET_KEY is set to a strong, unique, random value via environment variable
+# 3. ALLOWED_HOSTS is restricted to your specific domains (not '*')
+# The current '*' setting is acceptable only because Nginx handles host validation
 ALLOWED_HOSTS = ['*']  # Nginx handles security
 
 # ----------------------------------------------------------------------
@@ -167,6 +173,10 @@ else:
     CACHES = {'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}}
 
 # CORS
+# PRODUCTION SECURITY WARNING:
+# The following CORS configuration allows requests from localhost origins only.
+# In production, update CORS_ALLOWED_ORIGINS to include only your trusted frontend domains.
+# Never use CORS_ALLOW_ALL_ORIGINS = True in production as it allows requests from any origin.
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8080",
