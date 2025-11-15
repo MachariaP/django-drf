@@ -9,9 +9,11 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.contrib.auth.models import User
 from django.db import connection
+from django.db.models import Count, Avg
 
 from api.pagination import StandardResultsSetPagination
 from .models import Author, Category, Publisher, Book, Review
+from .permissions import IsReviewOwnerOrReadOnly
 from .serializers import (
     AuthorSerializer, CategorySerializer, PublisherSerializer,
     BookListSerializer, BookDetailSerializer, ReviewSerializer, UserSerializer,
@@ -35,7 +37,9 @@ class AuthorViewSet(viewsets.ModelViewSet):
     - Filter and order by `last_name`, `created_at`
     - Custom action: `/authors/{id}/books/` → list author's books
     """
-    queryset = Author.objects.all()
+    queryset = Author.objects.annotate(
+        books_count=Count('books')
+    ).all()
     serializer_class = AuthorSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -66,7 +70,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
     - Ordering by `name` or `created_at`
     - Custom action: `/categories/{id}/books/` → books in category
     """
-    queryset = Category.objects.all()
+    queryset = Category.objects.annotate(
+        books_count=Count('books')
+    ).all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -96,7 +102,9 @@ class PublisherViewSet(viewsets.ModelViewSet):
     - Search across `name`, `city`, `country`
     - Default ordering by `name`
     """
-    queryset = Publisher.objects.all()
+    queryset = Publisher.objects.annotate(
+        books_count=Count('books')
+    ).all()
     serializer_class = PublisherSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -121,7 +129,10 @@ class BookViewSet(viewsets.ModelViewSet):
     - `/books/available/` → filter available books
     - `/books/bestsellers/` → top 10 most-reviewed books
     """
-    queryset = Book.objects.select_related('author', 'publisher').prefetch_related('categories', 'reviews')
+    queryset = Book.objects.select_related('author', 'publisher').prefetch_related('categories').annotate(
+        reviews_count=Count('reviews'),
+        average_rating=Avg('reviews__rating')
+    )
     permission_classes = [IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -194,12 +205,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
     - Order by `rating` or `created_at`
 
     Permissions:
-    - Read: anyone
-    - Write: authenticated users only
+    - Read: anyone (authenticated or not)
+    - Create: authenticated users only
+    - Update/Delete: only review owner
     """
     queryset = Review.objects.select_related('book', 'user')
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsReviewOwnerOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['book', 'user', 'rating']
     ordering_fields = ['rating', 'created_at']
