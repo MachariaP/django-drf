@@ -2,6 +2,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
+from rest_framework.reverse import reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
@@ -19,6 +20,82 @@ from .serializers import (
     BookListSerializer, BookDetailSerializer, ReviewSerializer, UserSerializer,
     UserRegistrationSerializer, UserLoginSerializer, PasswordChangeSerializer
 )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_dashboard(request):
+    """
+    Beautiful API Dashboard - Welcome to the Django REST Framework Book API
+    
+    This is a comprehensive RESTful API for managing a book library system.
+    
+    ## 🚀 Quick Start Guide
+    
+    ### Authentication
+    - **Register**: Create a new account to get started
+    - **Login**: Authenticate and receive an API token
+    - **Token Usage**: Include `Authorization: Token <your_token>` in headers
+    
+    ### Main Resources
+    Explore our API resources to manage your book library:
+    
+    - **Books**: Browse, search, and manage books in the library
+    - **Authors**: View and manage book authors
+    - **Categories**: Organize books by categories
+    - **Publishers**: Track book publishers
+    - **Reviews**: Read and write book reviews
+    
+    ### API Features
+    - ✅ Full CRUD operations on all resources
+    - ✅ Advanced search and filtering
+    - ✅ Pagination for large datasets
+    - ✅ Token-based authentication
+    - ✅ Comprehensive API documentation
+    - ✅ OpenAPI/Swagger schema
+    
+    ### Available Endpoints
+    Use the links below to explore the API:
+    """
+    
+    return Response({
+        'message': 'Welcome to the Django REST Framework Book API! 📚',
+        'version': 'v1',
+        'documentation': {
+            'swagger_ui': reverse('swagger-ui', request=request),
+            'redoc': reverse('redoc', request=request),
+            'openapi_schema': reverse('schema', request=request),
+        },
+        'authentication': {
+            'register': reverse('register', request=request),
+            'login': reverse('login', request=request),
+            'logout': reverse('logout', request=request),
+            'change_password': reverse('change_password', request=request),
+            'profile': reverse('user_profile', request=request),
+        },
+        'resources': {
+            'books': reverse('book-list', request=request),
+            'authors': reverse('author-list', request=request),
+            'categories': reverse('category-list', request=request),
+            'publishers': reverse('publisher-list', request=request),
+            'reviews': reverse('review-list', request=request),
+        },
+        'health': {
+            'status': reverse('health_check', request=request),
+        },
+        'features': [
+            'Full CRUD operations on all resources',
+            'Advanced search and filtering',
+            'Pagination support',
+            'Token-based authentication',
+            'Comprehensive documentation',
+            'OpenAPI/Swagger schema',
+        ],
+        'support': {
+            'repository': 'https://github.com/MachariaP/django-drf',
+            'issues': 'https://github.com/MachariaP/django-drf/issues',
+        }
+    })
 
 
 class AuthorViewSet(viewsets.ModelViewSet):
@@ -281,7 +358,7 @@ def health_check(request):
         )
     ]
 )
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def register_user(request):
     """
@@ -305,6 +382,11 @@ def register_user(request):
     Example: POST /api/auth/register/
     """
     from rest_framework.authtoken.models import Token
+    
+    if request.method == 'GET':
+        # Return serializer for browsable API form
+        serializer = UserRegistrationSerializer()
+        return Response(serializer.data)
     
     serializer = UserRegistrationSerializer(data=request.data)
     
@@ -341,7 +423,7 @@ def register_user(request):
         )
     ]
 )
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def login_user(request):
     """
@@ -361,6 +443,11 @@ def login_user(request):
     Example: POST /api/auth/login/
     """
     from rest_framework.authtoken.models import Token
+    
+    if request.method == 'GET':
+        # Return serializer for browsable API form
+        serializer = UserLoginSerializer()
+        return Response(serializer.data)
     
     serializer = UserLoginSerializer(data=request.data)
     
