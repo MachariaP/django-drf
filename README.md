@@ -165,7 +165,7 @@ curl http://localhost:8000/api/books/ \
 - `GET /api/auth/profile/` - Get current user profile
 - `POST /api/auth/change-password/` - Change password securely
 
-For detailed API testing examples, see [API_TESTING_GUIDE.md](API_TESTING_GUIDE.md).
+For detailed API testing examples, see [API_TESTING_GUIDE.md](docs/API_TESTING_GUIDE.md).
 
 ---
 
