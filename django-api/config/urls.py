@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponseRedirect
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.authtoken.views import obtain_auth_token
@@ -29,6 +30,9 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
+
+# Redirect root (/) to /api/
+urlpatterns += [path('', lambda request: HttpResponseRedirect('/api/'))]
 
 # SERVE STATIC FILES IN DEBUG MODE
 if settings.DEBUG:
