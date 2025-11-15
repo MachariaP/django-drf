@@ -299,4 +299,4 @@ If you improve these scripts:
 
 ---
 
-**Need help?** See the main [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md) for detailed setup instructions.
+**Need help?** See the main [DEPLOYMENT_GUIDE.md](../docs/DEPLOYMENT_GUIDE.md) for detailed setup instructions.

@@ -478,4 +478,4 @@ python api_playground.py
 
 Happy API Testing! 🚀
 
-For more information, see the main [guide.md](../guide.md) file.
+For more information, see the main [guide.md](guide.md) file.

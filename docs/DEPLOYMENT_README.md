@@ -33,9 +33,9 @@ This directory contains everything you need to set up PostgreSQL database and de
 
 | Script | Purpose | Documentation |
 |--------|---------|---------------|
-| **setup_postgres.sh** | Automated PostgreSQL installation and configuration | [scripts/README.md](scripts/README.md) |
-| **backup_database.sh** | Database backup with retention management | [scripts/README.md](scripts/README.md) |
-| **deploy.sh** | Production deployment automation | [scripts/README.md](scripts/README.md) |
+| **setup_postgres.sh** | Automated PostgreSQL installation and configuration | [scripts/README.md](../scripts/README.md) |
+| **backup_database.sh** | Database backup with retention management | [scripts/README.md](../scripts/README.md) |
+| **deploy.sh** | Production deployment automation | [scripts/README.md](../scripts/README.md) |
 
 ### 🐳 Docker Configuration
 
@@ -169,7 +169,7 @@ Week 3: Security & Monitoring
    - [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Detailed troubleshooting section
 
 2. **Review Documentation**
-   - [scripts/README.md](scripts/README.md) - Script-specific help
+   - [scripts/README.md](../scripts/README.md) - Script-specific help
 
 3. **Common Issues**
    - Database connection: DEPLOYMENT_GUIDE.md → Troubleshooting → PostgreSQL
